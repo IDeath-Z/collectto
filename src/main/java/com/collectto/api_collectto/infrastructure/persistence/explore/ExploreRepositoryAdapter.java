@@ -21,8 +21,13 @@ import com.collectto.api_collectto.infrastructure.persistence.item.ItemJpaReposi
 import com.collectto.api_collectto.infrastructure.persistence.shared.PageConverter;
 import com.collectto.api_collectto.infrastructure.persistence.tag.TagJpaEntity;
 import com.collectto.api_collectto.infrastructure.persistence.tag.TagJpaRepository;
+import com.collectto.api_collectto.infrastructure.persistence.tag.TagWeightProjection;
 
 import lombok.RequiredArgsConstructor;
+
+import java.util.HashSet;
+
+import com.collectto.api_collectto.infrastructure.persistence.tag.TagWeightProjection;
 
 @Service
 @RequiredArgsConstructor
@@ -124,5 +129,25 @@ public class ExploreRepositoryAdapter implements ExploreRepository {
                 proj -> proj.getMediaUrls().stream().limit(3).toList(),
                 (v1, v2) -> v1
             ));
+    }
+
+        // [Grafo de recomendação] Implementação do port: chama o TagJpaRepository
+    // (que já é injetado nesta classe) e converte o resultado do banco
+    // (TagWeightProjection, um formato específico do JPA) para um Map comum,
+    // que é o que o domain entende — sem expor nenhum detalhe de JPA pra fora daqui.
+    @Override
+    public Map<UUID, Integer> getTagWeightsForUser(UUID userId) {
+        return tagRepository.findTagWeightsByUserId(userId).stream()
+            .collect(Collectors.toMap(TagWeightProjection::getTagId, TagWeightProjection::getWeight));
+    }
+
+    // [Grafo de recomendação] Implementação do port: busca vizinhos, mas evita
+    // chamar o banco à toa se não houver nenhuma tag para procurar.
+    @Override
+    public Set<UUID> getNeighborUserIds(Set<UUID> tagIds, UUID excludeUserId) {
+        if (tagIds.isEmpty())
+            return Set.of();
+
+        return new HashSet<>(tagRepository.findUserIdsByTagIds(tagIds, excludeUserId));
     }
 }
