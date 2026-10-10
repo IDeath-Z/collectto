@@ -32,9 +32,6 @@ import com.collectto.api_collectto.presentation.dto.user.UserResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 
-
-
-@CrossOrigin
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users")
