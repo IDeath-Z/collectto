@@ -1,7 +1,6 @@
 package com.collectto.api_collectto.presentation.controllers;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,7 +19,6 @@ import com.collectto.api_collectto.presentation.dto.auth.TokenRefreshResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 
-@CrossOrigin
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/auth")
