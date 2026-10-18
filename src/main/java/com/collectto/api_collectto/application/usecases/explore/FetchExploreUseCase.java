@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 public final class FetchExploreUseCase {
 
     private final ExploreRepository exploreRepository;
+    private final TagGraphExplorer tagGraphExplorer;
 
     public record Input(UUID requesterId, int page, int size) {}
     public record Output(List<DomainExploreCard> content, int page, int size, boolean hasNext) {}
@@ -27,6 +28,7 @@ public final class FetchExploreUseCase {
         List<DomainExploreCard> exploreFeed = new ArrayList<>();
         
         Set<UUID> favoriteTagIds = exploreRepository.getFavoriteTagIds(input.requesterId());
+        Set<UUID> graphRecommendedTagIds = tagGraphExplorer.findRecommendedTagIds(input.requesterId());
 
         List<DomainExploreCard> collections = new ArrayList<>();
         Set<UUID> addedCollectionIds = new HashSet<>();
@@ -35,7 +37,16 @@ public final class FetchExploreUseCase {
             if (addedCollectionIds.add(card.id())) collections.add(card);
         }
 
+        // [Grafo de recomendação] Tenta completar com recomendações do grafo (BFS)
+        // antes de cair para o fallback de popularidade.
         int missingCollections = pageRequest.size() - collections.size();
+        if (missingCollections > 0) {
+            for (DomainExploreCard card : exploreRepository.getCollectionsByUserTagsAffinity(input.requesterId(), graphRecommendedTagIds, new DomainPageRequest(pageRequest.page(), missingCollections, pageRequest.sortBy()))) {
+                if (addedCollectionIds.add(card.id())) collections.add(card);
+            }
+        }
+
+        missingCollections = pageRequest.size() - collections.size();
         if (missingCollections > 0) {
             for (DomainExploreCard card : exploreRepository.getCollectionsByPopularity(input.requesterId(), new DomainPageRequest(pageRequest.page(), missingCollections, pageRequest.sortBy()))) {
                 if (addedCollectionIds.add(card.id())) collections.add(card);
@@ -57,7 +68,15 @@ public final class FetchExploreUseCase {
             if (addedItemIds.add(card.id())) items.add(card);
         }
 
+        // [Grafo de recomendação] Mesma ideia acima, agora para itens.
         int missingItems = pageRequest.size() - items.size();
+        if (missingItems > 0) {
+            for (DomainExploreCard card : exploreRepository.getItemsByUserTagsAffinity(input.requesterId(), graphRecommendedTagIds, addedCollectionIds, new DomainPageRequest(pageRequest.page(), missingItems, pageRequest.sortBy()))) {
+                if (addedItemIds.add(card.id())) items.add(card);
+            }
+        }
+
+        missingItems = pageRequest.size() - items.size();
         if (missingItems > 0) {
             for (DomainExploreCard card : exploreRepository.getItemsByPopularity(input.requesterId(), addedCollectionIds, new DomainPageRequest(pageRequest.page(), missingItems, pageRequest.sortBy()))) {
                 if (addedItemIds.add(card.id())) items.add(card);

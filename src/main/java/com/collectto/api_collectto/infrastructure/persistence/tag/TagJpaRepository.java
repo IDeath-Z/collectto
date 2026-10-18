@@ -85,4 +85,30 @@ public interface TagJpaRepository extends JpaRepository<TagJpaEntity, UUID> {
         WHERE user_id != :excludeUserId
         """, nativeQuery = true)
     List<UUID> findUserIdsByTagIds(@Param("tagIds") Set<UUID> tagIds, @Param("excludeUserId") UUID excludeUserId);
+
+    // [Grafo de recomendação] Versão em lote de findTagWeightsByUserId: busca o peso
+    // das tags de VÁRIOS usuários numa única consulta, evitando repetir a query
+    // uma vez por vizinho (solucao N+1).
+    @Query(value = """
+        SELECT user_id AS userId, tag_id AS tagId, COUNT(*) AS weight FROM (
+            SELECT i.user_id, it.tag_id FROM item_tags it
+            JOIN items i ON i.item_id = it.item_id
+            WHERE i.user_id IN (:userIds) AND i.is_active = true
+
+            UNION ALL
+
+            SELECT c.user_id, ct.tag_id FROM collection_tags ct
+            JOIN collections c ON c.collection_id = ct.collection_id
+            WHERE c.user_id IN (:userIds) AND c.is_active = true
+
+            UNION ALL
+
+            SELECT cf.follower_id AS user_id, ct.tag_id FROM collection_tags ct
+            JOIN collection_follows cf ON cf.collection_id = ct.collection_id
+            WHERE cf.follower_id IN (:userIds)
+        ) AS combined
+        GROUP BY user_id, tag_id
+        """, nativeQuery = true)
+    List<UserTagWeightProjection> findTagWeightsByUserIds(@Param("userIds") Set<UUID> userIds);
 }
+
