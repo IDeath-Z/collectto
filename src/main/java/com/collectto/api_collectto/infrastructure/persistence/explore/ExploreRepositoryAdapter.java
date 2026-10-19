@@ -22,12 +22,11 @@ import com.collectto.api_collectto.infrastructure.persistence.shared.PageConvert
 import com.collectto.api_collectto.infrastructure.persistence.tag.TagJpaEntity;
 import com.collectto.api_collectto.infrastructure.persistence.tag.TagJpaRepository;
 import com.collectto.api_collectto.infrastructure.persistence.tag.TagWeightProjection;
+import com.collectto.api_collectto.infrastructure.persistence.tag.UserTagWeightProjection;
 
 import lombok.RequiredArgsConstructor;
 
 import java.util.HashSet;
-
-import com.collectto.api_collectto.infrastructure.persistence.tag.TagWeightProjection;
 
 @Service
 @RequiredArgsConstructor
@@ -149,5 +148,18 @@ public class ExploreRepositoryAdapter implements ExploreRepository {
             return Set.of();
 
         return new HashSet<>(tagRepository.findUserIdsByTagIds(tagIds, excludeUserId));
+    }
+
+    // [Grafo de recomendação] Implementação em lote: agrupa o resultado (que vem "achatado", uma linha por usuário+tag) num Map aninhado: usuário -> (tag -> peso).
+    @Override
+    public Map<UUID, Map<UUID, Integer>> getTagWeightsForUsers(Set<UUID> userIds) {
+        if (userIds.isEmpty())
+            return Map.of();
+
+        return tagRepository.findTagWeightsByUserIds(userIds).stream()
+            .collect(Collectors.groupingBy(
+                UserTagWeightProjection::getUserId,
+                Collectors.toMap(UserTagWeightProjection::getTagId, UserTagWeightProjection::getWeight)
+            ));
     }
 }

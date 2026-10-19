@@ -27,4 +27,7 @@ public interface ExploreRepository {
     // [Grafo de recomendação] Dado um conjunto de tags, devolve os ids de outros
     // usuários (excluindo o informado) que usam pelo menos uma delas — os "vizinhos".
     Set<UUID> getNeighborUserIds(Set<UUID> tagIds, UUID excludeUserId);
+    
+    // [Grafo de recomendação] Versão em lote: peso das tags de vários usuários de uma vez
+    Map<UUID, Map<UUID, Integer>> getTagWeightsForUsers(Set<UUID> userIds);
 }
