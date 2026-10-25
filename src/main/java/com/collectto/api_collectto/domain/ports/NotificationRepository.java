@@ -18,4 +18,5 @@ public interface NotificationRepository {
     void deleteById(UUID id);
     void deleteByRecipientIdAndActorIdAndContext(UUID recipientId, UUID actorId, NotificationContext context);
     void deleteByActorIdAndReferenceIdAndContext(UUID actorId, UUID referenceId, NotificationContext context);
+    void markAllAsReadByRecipientId(UUID recipientId);
 }
