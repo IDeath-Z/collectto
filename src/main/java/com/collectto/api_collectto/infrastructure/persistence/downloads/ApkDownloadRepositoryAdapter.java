@@ -1,5 +1,7 @@
 package com.collectto.api_collectto.infrastructure.persistence.downloads;
 
+import java.time.Instant;
+
 import org.springframework.stereotype.Component;
 
 import com.collectto.api_collectto.domain.entities.ApkDownload;
@@ -37,5 +39,13 @@ public class ApkDownloadRepositoryAdapter implements ApkDownloadRepository {
     @Override
     public long countByPlatform(String platform) {
         return jpaRepository.countByPlatform(platform);
+    }
+
+    @Override
+    public boolean existsRecentDownloadByIp(String ipAddress, String platform, Instant since) {
+        if (ipAddress == null || ipAddress.isBlank()) {
+            return false;
+        }
+        return jpaRepository.existsByIpAddressAndPlatformAndDownloadedAtAfter(ipAddress, platform, since);
     }
 }

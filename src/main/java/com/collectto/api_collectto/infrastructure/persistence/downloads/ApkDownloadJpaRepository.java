@@ -1,10 +1,12 @@
 package com.collectto.api_collectto.infrastructure.persistence.downloads;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import java.time.Instant;
 
-@Repository
+import org.springframework.data.jpa.repository.JpaRepository;
+
 public interface ApkDownloadJpaRepository extends JpaRepository<ApkDownloadJpaEntity, Long> {
 
     long countByPlatform(String platform);
+
+    boolean existsByIpAddressAndPlatformAndDownloadedAtAfter(String ipAddress, String platform, Instant downloadedAt);
 }

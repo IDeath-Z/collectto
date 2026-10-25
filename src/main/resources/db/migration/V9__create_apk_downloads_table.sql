@@ -7,3 +7,4 @@ CREATE TABLE apk_downloads (
 );
 
 CREATE INDEX idx_apk_downloads_platform ON apk_downloads(platform);
+CREATE INDEX idx_apk_downloads_ip_recent ON apk_downloads(ip_address, platform, downloaded_at);
