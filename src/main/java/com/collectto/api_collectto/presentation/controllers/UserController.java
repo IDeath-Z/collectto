@@ -124,8 +124,10 @@ public final class UserController {
     
     @GetMapping("/{userId}")
     @Operation(summary = "Fetch user details", description = "Retrieves the details of a user by their unique identifier.")
-    public ResponseEntity<UserResponse> get(@PathVariable UUID userId) {
-        var output = transactionalProxy.executeReadOnly(() -> fetchUserUseCase.execute(new FetchUserUseCase.Input(userId)));
+    public ResponseEntity<UserResponse> get(@AuthenticationPrincipal SecurityUserDetails userDetails, @PathVariable UUID userId) {
+        UUID requesterId = userDetails.getUser().getId();
+
+        var output = transactionalProxy.executeReadOnly(() -> fetchUserUseCase.execute(new FetchUserUseCase.Input(requesterId, userId)));
 
         return ResponseEntity.ok(new UserResponse(
             output.id(),
@@ -136,6 +138,7 @@ public final class UserController {
             output.profileBackgroundUrl(),
             output.followersCount(),
             output.followingCount(),
+            output.followState(),
             output.creationDate()
         ));
     }
