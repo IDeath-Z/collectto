@@ -3,6 +3,8 @@ package com.collectto.api_collectto.presentation.dto.user;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.collectto.api_collectto.domain.enums.FollowState;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record UserResponse(
@@ -29,6 +31,9 @@ public record UserResponse(
     
     @Schema(description = "Number of following")
     int followingCount,
+
+    @Schema(description = "Follow relationship of the authenticated user with this user: NONE, REQUESTED or FOLLOWING", example = "FOLLOWING")
+    FollowState followState,
     
     @Schema(description = "Timestamp of user creation", example = "2026-01-01T00:00:00Z")
     Instant createdAt

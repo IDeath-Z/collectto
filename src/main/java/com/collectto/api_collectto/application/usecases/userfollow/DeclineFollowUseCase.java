@@ -29,7 +29,7 @@ public final class DeclineFollowUseCase {
         UserFollow followRequest = userFollowRepository.findById(input.followerId(), input.followedId())
             .orElseThrow(() -> new ResourceNotFoundException("Follow request not found with followerId: " + input.followerId() + " and followedId: " + input.followedId()));
 
-        userFollowRepository.save(followRequest.decline());
+        UserFollow declinedFollow = userFollowRepository.save(followRequest.decline());
         notificationRepository.deleteByRecipientIdAndActorIdAndContext(
             followRequest.getFollowedId(), 
             followRequest.getFollowerId(), 
@@ -37,10 +37,10 @@ public final class DeclineFollowUseCase {
         );
 
         return new Output(
-            followRequest.getFollowerId(),
-            followRequest.getFollowedId(),
-            followRequest.getStatus(),
-            followRequest.getCreatedAt()
+            declinedFollow.getFollowerId(),
+            declinedFollow.getFollowedId(),
+            declinedFollow.getStatus(),
+            declinedFollow.getCreatedAt()
         );
     }
 }
