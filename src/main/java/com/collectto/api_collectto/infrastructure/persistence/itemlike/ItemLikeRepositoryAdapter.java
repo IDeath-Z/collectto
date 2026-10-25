@@ -1,6 +1,8 @@
 package com.collectto.api_collectto.infrastructure.persistence.itemlike;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -48,6 +50,11 @@ public final class ItemLikeRepositoryAdapter implements ItemLikeRepository {
     @Override
     public boolean existsById(UUID itemId, UUID likerId) {
         return itemLikeJpaRepository.existsById(new ItemLikeJpaId(itemId, likerId));
+    }
+    @Override
+    public Set<UUID> findLikedItemIds(UUID likerId, List<UUID> itemIds) {
+        if (itemIds.isEmpty()) return Set.of();
+        return itemLikeJpaRepository.findLikedItemIds(likerId, itemIds);
     }
     @Override
     public void deleteById(UUID itemId, UUID likerId) {
