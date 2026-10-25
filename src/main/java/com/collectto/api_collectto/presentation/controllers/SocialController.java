@@ -90,7 +90,8 @@ public final class SocialController {
                     feed.item().isActive(),
                     feed.item().getCreatedAt(),
                     feed.item().getUpdatedAt()
-                )
+                ),
+                feed.isLiked()
             )).toList(),
             output.size(),
             output.page(),

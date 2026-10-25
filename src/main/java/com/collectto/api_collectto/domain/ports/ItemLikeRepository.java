@@ -1,6 +1,8 @@
 package com.collectto.api_collectto.domain.ports;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import com.collectto.api_collectto.domain.entities.ItemLike;
@@ -14,5 +16,6 @@ public interface ItemLikeRepository {
     DomainPageResult<ItemLike> findByItemId(UUID itemId, DomainPageRequest pageRequest);
     DomainPageResult<ItemLike> findByLikerId(UUID likerId, DomainPageRequest pageRequest);
     boolean existsById(UUID itemId, UUID likerId);
+    Set<UUID> findLikedItemIds(UUID likerId, List<UUID> itemIds);
     void deleteById(UUID itemId, UUID likerId);
 }
