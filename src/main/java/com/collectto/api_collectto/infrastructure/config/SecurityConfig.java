@@ -61,6 +61,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/users", "/users/create").permitAll()
                 .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh").permitAll()
                 .requestMatchers(HttpMethod.POST, "/preregister").permitAll()
+                .requestMatchers(HttpMethod.GET, "/downloads/**").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) ->
