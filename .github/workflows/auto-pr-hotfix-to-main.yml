@@ -1,0 +1,83 @@
+name: Auto PR (hotfix -> main)
+
+on:
+  push:
+    branches:
+      - 'hotfix/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # ========================================================
+  # JOB 1: Validar e Executar Testes Automatizados
+  # ========================================================
+  validate-and-test:
+    name: Compilar e Executar Testes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Compilar Projeto
+        run: mvn compile -DskipTests
+
+      - name: Executar Testes Unitários
+        run: mvn test
+
+  # ========================================================
+  # JOB 2: Criar ou Atualizar PR Hotfix para Main (Apenas se testes passarem)
+  # ========================================================
+  abrir-pr-hotfix:
+    name: Criar ou Atualizar PR Hotfix para Main
+    needs: validate-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Criar ou Atualizar Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
+          PR_TITLE="[hotfix] ${BRANCH_NAME}: ${COMMIT_MSG}"
+
+          PR_BODY="## PR de Hotfix gerada automaticamente
+
+          Este PR foi criado automaticamente a partir da branch de hotfix \`${BRANCH_NAME}\` diretamente para \`main\`.
+
+          - **Autor:** @${{ github.actor }}
+          - **Branch de Origem:** \`${BRANCH_NAME}\`
+          - **Branch de Destino:** \`main\`
+          - **Último Commit:** \`${COMMIT_MSG}\`
+          - **Status dos Testes:** ✅ Validado nos testes automatizados com sucesso.
+
+          ⚠️ **Atenção:** Como se trata de um hotfix direto para produção, valide criticamente antes do merge e lembre-se de sincronizar com a \`develop\` após o deploy."
+
+          echo "Verificando se já existe PR aberto para $BRANCH_NAME -> main..."
+          EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --base main --json number --jq '.[0].number')
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR #$EXISTING_PR já existe. Atualizando..."
+            gh pr edit "$EXISTING_PR" --title "$PR_TITLE" --body "$PR_BODY"
+            echo "PR #$EXISTING_PR atualizada com sucesso!"
+          else
+            echo "Criando nova PR para main..."
+            gh pr create \
+              --base main \
+              --head "$BRANCH_NAME" \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY"
+            echo "PR criada com sucesso!"
+          fi
