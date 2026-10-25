@@ -16,10 +16,16 @@ import com.collectto.api_collectto.application.usecases.downloads.TrackApkDownlo
 import com.collectto.api_collectto.infrastructure.persistence.shared.TransactionalProxy;
 import com.collectto.api_collectto.presentation.dto.download.ApkDownloadStatsResponse;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Controller de downloads.
+ * Ocultado da documentação pública do Swagger (@Hidden) para evitar testes indevidos ou flood manual.
+ */
+@Hidden
 @Slf4j
 @RestController
 @RequiredArgsConstructor

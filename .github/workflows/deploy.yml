@@ -54,7 +54,7 @@ jobs:
         run: mvn test
 
   # ========================================================
-  # JOB 3: Deploy na VPS (Executado apenas quando o commit entrar na main pós-merge)
+  # JOB 3: Deploy na VPS (Executado apenas quando o commit entrar na main)
   # ========================================================
   deploy:
     name: Deploy VPS
@@ -68,6 +68,6 @@ jobs:
       - name: Gerar .env
         run: echo "${{ secrets.ENV_FILE }}" > .env
 
-      - name: Subir API (Docker com Auto-Restart)
+      - name: Subir API e Banco (Docker com Auto-Restart)
         run: |
           docker compose -f compose.yaml -f compose.prod.yaml up -d --build

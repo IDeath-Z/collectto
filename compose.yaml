@@ -1,20 +1,22 @@
-name: collectto-api
-
-# Base containers
+#Base containers
 services:
   postgres:
-    image: 'postgres:16'
+    image: "postgres:16"
     container_name: collectto_db
     restart: unless-stopped
     environment:
-      - 'POSTGRES_DB=${DB_NAME}'
-      - 'POSTGRES_PASSWORD=${DB_PASSWORD}'
-      - 'POSTGRES_USER=${DB_USER}'
+      - "POSTGRES_DB=${DB_NAME}"
+      - "POSTGRES_PASSWORD=${DB_PASSWORD}"
+      - "POSTGRES_USER=${DB_USER}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
   api:
     build: .
@@ -36,3 +38,6 @@ services:
       - ORACLE_BUCKET=${ORACLE_BUCKET}
       - ORACLE_PRIVATE_KEY=${ORACLE_PRIVATE_KEY}
       - CORS_ALLOWED_ORIGIN_PATTERNS=${CORS_ALLOWED_ORIGIN_PATTERNS:-https://collectto.app,https://www.collectto.app}
+
+volumes:
+  pgdata:
