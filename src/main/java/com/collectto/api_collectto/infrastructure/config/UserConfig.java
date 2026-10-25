@@ -11,6 +11,7 @@ import com.collectto.api_collectto.application.usecases.user.FetchUserUseCase;
 import com.collectto.api_collectto.application.usecases.user.UpdateUserUseCase;
 import com.collectto.api_collectto.domain.ports.PasswordHasher;
 import com.collectto.api_collectto.domain.ports.StorageProvider;
+import com.collectto.api_collectto.domain.ports.UserFollowRepository;
 import com.collectto.api_collectto.domain.ports.UserRepository;
 import com.collectto.api_collectto.domain.shared.StorageUrlPaths;
 
@@ -38,8 +39,8 @@ public class UserConfig {
     }
 
     @Bean
-    public FetchUserUseCase fetchUserUseCase(UserRepository userRepository) {
-        return new FetchUserUseCase(userRepository);
+    public FetchUserUseCase fetchUserUseCase(UserRepository userRepository, UserFollowRepository userFollowRepository) {
+        return new FetchUserUseCase(userRepository, userFollowRepository);
     }
 
     @Bean
