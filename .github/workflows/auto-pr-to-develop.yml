@@ -1,0 +1,87 @@
+name: Auto PR to develop
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'fix/**'
+      - 'refactor/**'
+      - 'chore/**'
+      - 'docs/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # ========================================================
+  # JOB 1: Validar e Executar Testes Automatizados
+  # ========================================================
+  validate-and-test:
+    name: Compilar e Executar Testes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Compilar Projeto
+        run: mvn compile -DskipTests
+
+      - name: Executar Testes Unitários
+        run: mvn test
+
+  # ========================================================
+  # JOB 2: Criar ou Atualizar PR para Develop (Apenas se testes passarem)
+  # ========================================================
+  open-or-update-pr:
+    name: Criar ou Atualizar PR para Develop
+    needs: validate-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Criar ou Atualizar Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
+
+          PR_TITLE="[$BRANCH_NAME] ${COMMIT_MSG}"
+
+          PR_BODY="## PR gerada automaticamente
+          
+          Este Pull Request foi aberto automaticamente a partir do push na branch \`${BRANCH_NAME}\`.
+          
+          - **Autor:** @${{ github.actor }}
+          - **Último Commit:** \`${COMMIT_MSG}\`
+          - **Branch de Origem:** \`${BRANCH_NAME}\`
+          - **Branch de Destino:** \`develop\`
+          - **Status dos Testes:** ✅ Validado nos testes automatizados com sucesso.
+          
+          Por favor, valide as alterações antes de realizar o merge."
+
+          echo "Verificando se já existe PR aberto para $BRANCH_NAME -> develop..."
+          EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --base develop --json number --jq '.[0].number')
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR #$EXISTING_PR já existe. Atualizando título e descrição..."
+            gh pr edit "$EXISTING_PR" --title "$PR_TITLE" --body "$PR_BODY"
+            echo "PR #$EXISTING_PR atualizada com sucesso!"
+          else
+            echo "Criando nova PR para develop..."
+            gh pr create \
+              --base develop \
+              --head "$BRANCH_NAME" \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY"
+            echo "PR criada com sucesso!"
+          fi

@@ -5,8 +5,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
+  # ========================================================
+  # JOB 1: Compilação do Projeto
+  # ========================================================
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -26,8 +30,11 @@ jobs:
       - name: Compilar Projeto (Build)
         run: mvn compile -DskipTests
 
+  # ========================================================
+  # JOB 2: Execução de Testes Unitários
+  # ========================================================
   test:
-    name: test
+    name: Testes
     needs: build
     runs-on: ubuntu-latest
     env:
@@ -46,13 +53,14 @@ jobs:
       - name: Executar Testes
         run: mvn test
 
+  # ========================================================
+  # JOB 3: Deploy na VPS (Executado apenas quando o commit entrar na main pós-merge)
+  # ========================================================
   deploy:
     name: Deploy VPS
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: self-hosted
-
-
     steps:
       - name: Checkout na VPS
         uses: actions/checkout@v4.2.2
@@ -60,6 +68,6 @@ jobs:
       - name: Gerar .env
         run: echo "${{ secrets.ENV_FILE }}" > .env
 
-      - name: Subir API (Docker)
+      - name: Subir API (Docker com Auto-Restart)
         run: |
           docker compose -f compose.yaml -f compose.prod.yaml up -d --build

@@ -3,6 +3,8 @@
 # Requires the collectto-landing repo cloned as a sibling directory (../collectto-landing).
 # Run docker compose -f compose.yaml -f compose.prod.yaml up -d to start in production mode.
 services:
+  postgres:
+    restart: always
   api:
     restart: always
     environment:

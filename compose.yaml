@@ -3,6 +3,7 @@ services:
   postgres:
     image: "postgres:16"
     container_name: collectto_db
+    restart: unless-stopped
     environment:
       - "POSTGRES_DB=${DB_NAME}"
       - "POSTGRES_PASSWORD=${DB_PASSWORD}"
@@ -20,6 +21,7 @@ services:
   api:
     build: .
     container_name: collectto_api
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy

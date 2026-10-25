@@ -4,29 +4,80 @@ on:
   push:
     branches:
       - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
-  abrir-pr:
-    name: Criar PR para Main
+  # ========================================================
+  # JOB 1: Validar e Executar Testes Automatizados
+  # ========================================================
+  validate-and-test:
+    name: Compilar e Executar Testes
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
 
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Compilar Projeto
+        run: mvn compile -DskipTests
+
+      - name: Executar Testes Unitários
+        run: mvn test
+
+  # ========================================================
+  # JOB 2: Criar ou Atualizar PR para Main (Apenas se testes passarem)
+  # ========================================================
+  abrir-pr:
+    name: Criar ou Atualizar PR para Main
+    needs: validate-and-test
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout develop
         uses: actions/checkout@v4
 
-      - name: Criar Pull Request
+      - name: Criar ou Atualizar Pull Request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr create \
-            --base main \
-            --head develop \
-            --title "PR #${{ github.run_number }}: Sync develop -> main" \
-            --body "## Resumo da Alteração
+          COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
+          PR_TITLE="[release] develop -> main: ${COMMIT_MSG}"
+
+          PR_BODY="## PR de Release gerada automaticamente
+
+          Este PR foi criado automaticamente para promover as alterações consolidadas da branch \`develop\` para a \`main\`.
+
           - **Execução:** #${{ github.run_number }}
           - **Autor:** @${{ github.actor }}
-          - **Branch de Origem:** develop
-          - **Branch de Destino:** main
+          - **Branch de Origem:** \`develop\`
+          - **Branch de Destino:** \`main\`
+          - **Último Commit:** \`${COMMIT_MSG}\`
+          - **Status dos Testes:** ✅ Todos os testes automatizados passaram com sucesso.
 
-          PR gerado automaticamente via GitHub Actions. Valide os testes antes do merge." \
-          || echo "PR já existente ou sem alterações pendentes entre develop e main."
+          Valide a revisão antes de aprovar o merge para produção."
+
+          echo "Verificando se já existe PR aberto de develop para main..."
+          EXISTING_PR=$(gh pr list --head develop --base main --json number --jq '.[0].number')
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR #$EXISTING_PR já existe. Atualizando título e descrição..."
+            gh pr edit "$EXISTING_PR" --title "$PR_TITLE" --body "$PR_BODY"
+            echo "PR #$EXISTING_PR atualizada com sucesso!"
+          else
+            echo "Criando nova PR develop -> main..."
+            gh pr create \
+              --base main \
+              --head develop \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY"
+            echo "PR criada com sucesso!"
+          fi
