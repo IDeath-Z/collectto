@@ -68,4 +68,9 @@ public final class NotificationRepositoryAdapter implements NotificationReposito
     public void deleteByActorIdAndReferenceIdAndContext(UUID actorId, UUID referenceId, NotificationContext context) {
         jpaRepository.deleteByActorIdAndReferenceIdAndContext(actorId, referenceId, context);
     }
+
+    @Override
+    public void markAllAsReadByRecipientId(UUID recipientId) {
+        jpaRepository.markAllAsReadByRecipientId(recipientId);
+    }
 }
