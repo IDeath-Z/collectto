@@ -1,5 +1,7 @@
 package com.collectto.api_collectto.infrastructure.persistence.itemlike;
 
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -15,4 +17,7 @@ public interface ItemLikeJpaRepository extends JpaRepository<ItemLikeJpaEntity, 
 
     @Query("SELECT il FROM ItemLikeJpaEntity il WHERE il.id.likerId = :likerId")
     Page<ItemLikeJpaEntity> findByLikerId(@Param("likerId") UUID likerId, Pageable pageRequest);
+
+    @Query("SELECT il.id.itemId FROM ItemLikeJpaEntity il WHERE il.id.likerId = :likerId AND il.id.itemId IN :itemIds")
+    Set<UUID> findLikedItemIds(@Param("likerId") UUID likerId, @Param("itemIds") List<UUID> itemIds);
 }

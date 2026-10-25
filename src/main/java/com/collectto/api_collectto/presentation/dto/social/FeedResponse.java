@@ -26,7 +26,10 @@ public record FeedResponse(
         FeedSourceSummary source,
         
         @Schema(description = "Summary information about the item associated with the feed card")
-        ItemResponse item
+        ItemResponse item,
+
+        @Schema(description = "Defines if the authenticated user has already liked the item", example = "true")
+        boolean isLiked
     ) {}
 
     public record FeedSourceSummary(
