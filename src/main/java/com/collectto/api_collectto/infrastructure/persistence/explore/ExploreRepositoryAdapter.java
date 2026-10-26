@@ -1,5 +1,6 @@
 package com.collectto.api_collectto.infrastructure.persistence.explore;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,8 +26,6 @@ import com.collectto.api_collectto.infrastructure.persistence.tag.TagWeightProje
 import com.collectto.api_collectto.infrastructure.persistence.tag.UserTagWeightProjection;
 
 import lombok.RequiredArgsConstructor;
-
-import java.util.HashSet;
 
 @Service
 @RequiredArgsConstructor
@@ -87,7 +86,10 @@ public class ExploreRepositoryAdapter implements ExploreRepository {
 
         PageRequest springPage = PageConverter.toSpring(pageRequest);
 
-        List<CollectionJpaEntity> entities = collectionRepository.findRecommendedByTags(tags, Visibility.PUBLIC,requesterId, springPage);
+        List<CollectionJpaEntity> entities = collectionRepository.findRecommendedByTags(tags, Visibility.PUBLIC, requesterId, springPage);
+        if (entities.isEmpty())
+            return List.of();
+
         Set<UUID> collectionIds = entities.stream().map(CollectionJpaEntity::getId).collect(Collectors.toSet());
 
         return exploreMapper.toCollectionDomain(entities, mapMedias(collectionIds), SocialContext.COLLECTION);
@@ -122,6 +124,9 @@ public class ExploreRepositoryAdapter implements ExploreRepository {
     }
 
     private Map<UUID, List<String>> mapMedias(Set<UUID> collectionIds) {
+        if (collectionIds.isEmpty())
+            return Map.of();
+
         return collectionRepository.findMediaForCollections(collectionIds).stream()
             .collect(Collectors.toMap(
                 CollectionMediaProjection::getCollectionId,
@@ -130,7 +135,7 @@ public class ExploreRepositoryAdapter implements ExploreRepository {
             ));
     }
 
-        // [Grafo de recomendação] Implementação do port: chama o TagJpaRepository
+    // [Grafo de recomendação] Implementação do port: chama o TagJpaRepository
     // (que já é injetado nesta classe) e converte o resultado do banco
     // (TagWeightProjection, um formato específico do JPA) para um Map comum,
     // que é o que o domain entende — sem expor nenhum detalhe de JPA pra fora daqui.
