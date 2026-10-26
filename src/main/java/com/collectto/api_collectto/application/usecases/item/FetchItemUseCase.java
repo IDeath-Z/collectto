@@ -24,7 +24,11 @@ public final class FetchItemUseCase {
     private final CollectionRepository collectionRepository;
     private final UserFollowRepository userFollowRepository;
 
-   public record Input(UUID itemId, UUID collectionId, UUID requesterId) {}
+    public record Input(UUID itemId, UUID collectionId, UUID requesterId) {
+        public Input(UUID itemId, UUID requesterId) {
+            this(itemId, null, requesterId);
+        }
+    }
 
     public record ItemSummary(UUID id, String name, List<String> imagesURL) {}
 
@@ -33,8 +37,15 @@ public final class FetchItemUseCase {
         int commentsCount, boolean isActive, Instant createdAt, Instant updatedAt) {}
 
     public Output execute(Input input) {
-        Collection collection = collectionRepository.findById(input.collectionId())
-            .orElseThrow(() -> new ResourceNotFoundException("Collection not found with id: " + input.collectionId()));
+        Item item = itemRepository.findById(input.itemId())
+            .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + input.itemId()));
+
+        if (input.collectionId() != null && !item.getCollectionId().equals(input.collectionId())) {
+            throw new ResourceNotFoundException("Item not found in collection with id: " + input.collectionId());
+        }
+
+        Collection collection = collectionRepository.findById(item.getCollectionId())
+            .orElseThrow(() -> new ResourceNotFoundException("Collection not found with id: " + item.getCollectionId()));
 
         if (!collection.getUserId().equals(input.requesterId())) {
             if (collection.getVisibility() == Visibility.PRIVATE)
@@ -44,9 +55,6 @@ public final class FetchItemUseCase {
                 if (!userFollowRepository.isFollowing(input.requesterId(), collection.getUserId()))
                     throw new ForbiddenActionException("User does not have permission to access items of this collection");
         }
-
-        Item item = itemRepository.findById(input.itemId())
-            .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + input.itemId()));
 
         return new Output(
             item.getId(),

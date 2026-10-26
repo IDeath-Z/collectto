@@ -2,6 +2,7 @@ package com.collectto.api_collectto.application.usecases.explore;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.collectto.api_collectto.domain.enums.SocialContext;
 import com.collectto.api_collectto.domain.ports.ExploreRepository;
 import com.collectto.api_collectto.domain.shared.DomainExploreCard;
 import com.collectto.api_collectto.domain.shared.DomainPageRequest;
@@ -59,6 +61,81 @@ class TagGraphExplorerTest {
         assertThat(fakeRepository.lastRequestedNeighborIds).hasSizeLessThanOrEqualTo(15);
     }
 
+    @Test
+    void fetchExploreUseCasePreservesEnrichedMetadataAndFiltersOutImagelessCards() {
+        UUID lego = UUID.randomUUID();
+        UUID funko = UUID.randomUUID();
+        UUID brunoId = UUID.randomUUID();
+        UUID validCollectionId = UUID.randomUUID();
+        UUID emptyMediaCollectionId = UUID.randomUUID();
+        UUID validItemId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        FakeExploreRepository fakeRepository = new FakeExploreRepository();
+        fakeRepository.ownTagWeights = Map.of(lego, 5);
+        fakeRepository.neighborIds = Set.of(brunoId);
+        fakeRepository.neighborsTagWeights = Map.of(brunoId, Map.of(lego, 3, funko, 4));
+        fakeRepository.graphRecommendedCollections = List.of(
+            new DomainExploreCard(
+                validCollectionId,
+                SocialContext.COLLECTION,
+                "Coleção Funko Raros",
+                "Edições limitadas",
+                List.of("https://cdn.collectto.app/funko1.jpg"),
+                List.of("funko"),
+                brunoId,
+                "bruno_collector",
+                "https://cdn.collectto.app/avatar.jpg",
+                validCollectionId,
+                "Coleção Funko Raros",
+                now
+            ),
+            new DomainExploreCard(
+                emptyMediaCollectionId,
+                SocialContext.COLLECTION,
+                "Coleção Vazia",
+                "Sem fotos",
+                List.of(),
+                List.of("funko"),
+                brunoId,
+                "bruno_collector",
+                null,
+                emptyMediaCollectionId,
+                "Coleção Vazia",
+                now
+            )
+        );
+        fakeRepository.graphRecommendedItems = List.of(
+            new DomainExploreCard(
+                validItemId,
+                SocialContext.ITEM,
+                "Batman 1989 Funko",
+                "Mint condition",
+                List.of("https://cdn.collectto.app/batman.jpg"),
+                List.of("funko", "dc"),
+                brunoId,
+                "bruno_collector",
+                "https://cdn.collectto.app/avatar.jpg",
+                validCollectionId,
+                "Coleção Funko Raros",
+                now
+            )
+        );
+
+        var explorer = new TagGraphExplorer(fakeRepository);
+        var useCase = new FetchExploreUseCase(fakeRepository, explorer);
+        var output = useCase.execute(new FetchExploreUseCase.Input(UUID.randomUUID(), 0, 4));
+
+        assertThat(output.content()).hasSize(2);
+        assertThat(output.content()).allMatch(card -> !card.imageUrls().isEmpty());
+        assertThat(output.content())
+            .extracting(DomainExploreCard::username)
+            .containsOnly("bruno_collector");
+        assertThat(output.content())
+            .extracting(DomainExploreCard::name)
+            .containsExactlyInAnyOrder("Coleção Funko Raros", "Batman 1989 Funko");
+    }
+
     private Set<UUID> generateFakeUserIds(int amount) {
         Set<UUID> ids = new HashSet<>();
         for (int i = 0; i < amount; i++) {
@@ -74,6 +151,8 @@ class TagGraphExplorerTest {
         Map<UUID, Integer> ownTagWeights = Map.of();
         Set<UUID> neighborIds = Set.of();
         Map<UUID, Map<UUID, Integer>> neighborsTagWeights = Map.of();
+        List<DomainExploreCard> graphRecommendedCollections = List.of();
+        List<DomainExploreCard> graphRecommendedItems = List.of();
 
         boolean neighborSearchCalled = false;
         Set<UUID> lastRequestedNeighborIds = Set.of();
@@ -95,20 +174,31 @@ class TagGraphExplorerTest {
             return neighborsTagWeights;
         }
 
-        // Os métodos abaixo não são usados pelo TagGraphExplorer, então ficam
-        // "vazios" só para a classe conseguir compilar (a interface exige todos).
         @Override
         public Set<UUID> getFavoriteTagIds(UUID userId) { return Set.of(); }
+
         @Override
-        public List<DomainExploreCard> getItemsByUserTagsAffinity(UUID requesterId, Set<UUID> tags, Set<UUID> excludedCollectionIds, DomainPageRequest pageRequest) { return List.of(); }
+        public List<DomainExploreCard> getItemsByUserTagsAffinity(UUID requesterId, Set<UUID> tags, Set<UUID> excludedCollectionIds, DomainPageRequest pageRequest) {
+            if (tags.isEmpty()) return List.of();
+            return graphRecommendedItems.stream()
+                .filter(item -> item.collectionId() == null || !excludedCollectionIds.contains(item.collectionId()))
+                .toList();
+        }
+
         @Override
         public List<DomainExploreCard> getItemsByPopularity(UUID requesterId, Set<UUID> excludedCollectionIds, DomainPageRequest pageRequest) { return List.of(); }
+
         @Override
         public List<DomainExploreCard> getItemsByMostRecent(UUID requesterId, Set<UUID> excludedCollectionIds, DomainPageRequest pageRequest) { return List.of(); }
+
         @Override
-        public List<DomainExploreCard> getCollectionsByUserTagsAffinity(UUID requesterId, Set<UUID> tags, DomainPageRequest pageRequest) { return List.of(); }
+        public List<DomainExploreCard> getCollectionsByUserTagsAffinity(UUID requesterId, Set<UUID> tags, DomainPageRequest pageRequest) {
+            return tags.isEmpty() ? List.of() : graphRecommendedCollections;
+        }
+
         @Override
         public List<DomainExploreCard> getCollectionsByPopularity(UUID requesterId, DomainPageRequest pageRequest) { return List.of(); }
+
         @Override
         public List<DomainExploreCard> getCollectionsByMostRecent(UUID requesterId, DomainPageRequest pageRequest) { return List.of(); }
     }

@@ -53,13 +53,15 @@ public interface ItemJpaRepository extends JpaRepository<ItemJpaEntity, UUID> {
 
     @Query("""
         SELECT DISTINCT i FROM ItemJpaEntity i 
+        JOIN FETCH i.user u
+        JOIN FETCH i.collection c
         JOIN FETCH i.tags t
-        JOIN i.collection c
         WHERE t.id IN :tagIds
         AND i.isActive = true
         AND c.isActive = true
         AND c.visibility = 'PUBLIC'
-        AND i.user.id != :requesterId
+        AND i.mediaUrls IS NOT NULL
+        AND u.id != :requesterId
         AND c.id NOT IN :excludedCollectionIds
     """)
     List<ItemJpaEntity> findRecommendedByTags(
@@ -71,12 +73,14 @@ public interface ItemJpaRepository extends JpaRepository<ItemJpaEntity, UUID> {
 
     @Query("""
         SELECT DISTINCT i FROM ItemJpaEntity i 
+        JOIN FETCH i.user u
+        JOIN FETCH i.collection c
         LEFT JOIN FETCH i.tags t
-        JOIN i.collection c
         WHERE i.isActive = true 
         AND c.isActive = true
         AND c.visibility = 'PUBLIC'
-        AND i.user.id != :requesterId
+        AND i.mediaUrls IS NOT NULL
+        AND u.id != :requesterId
         AND c.id NOT IN :excludedCollectionIds
         ORDER BY i.likesCount DESC
     """)
@@ -88,12 +92,14 @@ public interface ItemJpaRepository extends JpaRepository<ItemJpaEntity, UUID> {
 
     @Query("""
         SELECT DISTINCT i FROM ItemJpaEntity i 
+        JOIN FETCH i.user u
+        JOIN FETCH i.collection c
         LEFT JOIN FETCH i.tags t
-        JOIN i.collection c
         WHERE i.isActive = true 
         AND c.isActive = true
         AND c.visibility = 'PUBLIC'
-        AND i.user.id != :requesterId
+        AND i.mediaUrls IS NOT NULL
+        AND u.id != :requesterId
         AND c.id NOT IN :excludedCollectionIds
         ORDER BY i.createdAt DESC
     """)

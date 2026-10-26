@@ -51,12 +51,19 @@ public interface CollectionJpaRepository extends JpaRepository<CollectionJpaEnti
 
     @Query("""
         SELECT DISTINCT c FROM CollectionJpaEntity c 
+        JOIN FETCH c.user u
         JOIN FETCH c.tags t 
         WHERE t.id IN :tagIds 
         AND c.isActive = true 
-        AND c.user.isActive = true
+        AND u.isActive = true
         AND c.visibility = :publicVisibility
-        AND c.user.id != :requesterId 
+        AND u.id != :requesterId 
+        AND EXISTS (
+            SELECT 1 FROM ItemJpaEntity i 
+            WHERE i.collection = c 
+            AND i.isActive = true 
+            AND i.mediaUrls IS NOT NULL
+        )
     """)
     List<CollectionJpaEntity> findRecommendedByTags(
         @Param("tagIds") Set<UUID> tagIds,
@@ -67,11 +74,18 @@ public interface CollectionJpaRepository extends JpaRepository<CollectionJpaEnti
 
     @Query("""
         SELECT DISTINCT c FROM CollectionJpaEntity c 
+        JOIN FETCH c.user u
         LEFT JOIN FETCH c.tags t 
         WHERE c.isActive = true 
-        AND c.user.isActive = true
+        AND u.isActive = true
         AND c.visibility = :publicVisibility
-        AND c.user.id != :requesterId 
+        AND u.id != :requesterId 
+        AND EXISTS (
+            SELECT 1 FROM ItemJpaEntity i 
+            WHERE i.collection = c 
+            AND i.isActive = true 
+            AND i.mediaUrls IS NOT NULL
+        )
         ORDER BY c.followersCount DESC
     """)
     List<CollectionJpaEntity> findTrendingCollections(
@@ -82,11 +96,18 @@ public interface CollectionJpaRepository extends JpaRepository<CollectionJpaEnti
 
     @Query("""
         SELECT DISTINCT c FROM CollectionJpaEntity c 
+        JOIN FETCH c.user u
         LEFT JOIN FETCH c.tags t 
         WHERE c.isActive = true 
-        AND c.user.isActive = true
+        AND u.isActive = true
         AND c.visibility = :publicVisibility
-        AND c.user.id != :requesterId 
+        AND u.id != :requesterId 
+        AND EXISTS (
+            SELECT 1 FROM ItemJpaEntity i 
+            WHERE i.collection = c 
+            AND i.isActive = true 
+            AND i.mediaUrls IS NOT NULL
+        )
         ORDER BY c.createdAt DESC
     """)
     List<CollectionJpaEntity> findLatestCollections(
