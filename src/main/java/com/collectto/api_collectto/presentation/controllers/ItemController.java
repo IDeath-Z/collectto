@@ -143,6 +143,38 @@ public final class ItemController {
         ));
     }
 
+    @GetMapping("/{itemId}")
+    @Operation(summary = "Fetch item details directly by itemId", description = "Retrieves detailed information about a specific item by its ID without requiring collectionId in the URL, validating parent collection visibility.")
+    public ResponseEntity<ItemResponse> getItemByIdDirect(@AuthenticationPrincipal SecurityUserDetails userDetails, @PathVariable UUID itemId) {
+        UUID requesterId = userDetails.getUser().getId();
+
+        var output = transactionalProxy.executeReadOnly(() -> fetchItemUseCase.execute(
+            new FetchItemUseCase.Input(
+                itemId,
+                null,
+                requesterId
+            )
+        ));
+
+        return ResponseEntity.ok(new ItemResponse(
+            output.id(),
+            output.collectionId(),
+            output.userId(),
+            output.name(),
+            output.description(),
+            output.acquisitionDate(),
+            output.lastUsedDate(),
+            output.imageFilesUrls(),
+            output.attributes(),
+            output.likesCount(),
+            output.commentsCount(),
+            output.tags(),
+            output.isActive(),
+            output.createdAt(),
+            output.updatedAt()
+        ));
+    }
+
     @GetMapping("/{collectionId}/{itemId}")
     @Operation(summary = "Fetch item details", description = "Retrieves detailed information about a specific item, including its attributes and media URLs.")
     public ResponseEntity<ItemResponse> getItemById(@AuthenticationPrincipal SecurityUserDetails userDetails, @PathVariable UUID collectionId, @PathVariable UUID itemId) {

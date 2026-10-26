@@ -23,6 +23,10 @@ public final class FetchExploreUseCase {
     public record Input(UUID requesterId, int page, int size) {}
     public record Output(List<DomainExploreCard> content, int page, int size, boolean hasNext) {}
 
+    private boolean hasValidMedia(DomainExploreCard card) {
+        return card != null && card.imageUrls() != null && !card.imageUrls().isEmpty();
+    }
+
     public Output execute(Input input) {
         DomainPageRequest pageRequest = new DomainPageRequest(input.page(), input.size() / 2, SortBy.CREATED_AT_DESC);
         List<DomainExploreCard> exploreFeed = new ArrayList<>();
@@ -34,7 +38,7 @@ public final class FetchExploreUseCase {
         Set<UUID> addedCollectionIds = new HashSet<>();
 
         for (DomainExploreCard card : exploreRepository.getCollectionsByUserTagsAffinity(input.requesterId(), favoriteTagIds, pageRequest)) {
-            if (addedCollectionIds.add(card.id())) collections.add(card);
+            if (hasValidMedia(card) && addedCollectionIds.add(card.id())) collections.add(card);
         }
 
         // [Grafo de recomendação] Tenta completar com recomendações do grafo (BFS)
@@ -42,21 +46,21 @@ public final class FetchExploreUseCase {
         int missingCollections = pageRequest.size() - collections.size();
         if (missingCollections > 0) {
             for (DomainExploreCard card : exploreRepository.getCollectionsByUserTagsAffinity(input.requesterId(), graphRecommendedTagIds, new DomainPageRequest(pageRequest.page(), missingCollections, pageRequest.sortBy()))) {
-                if (addedCollectionIds.add(card.id())) collections.add(card);
+                if (hasValidMedia(card) && addedCollectionIds.add(card.id())) collections.add(card);
             }
         }
 
         missingCollections = pageRequest.size() - collections.size();
         if (missingCollections > 0) {
             for (DomainExploreCard card : exploreRepository.getCollectionsByPopularity(input.requesterId(), new DomainPageRequest(pageRequest.page(), missingCollections, pageRequest.sortBy()))) {
-                if (addedCollectionIds.add(card.id())) collections.add(card);
+                if (hasValidMedia(card) && addedCollectionIds.add(card.id())) collections.add(card);
             }
         }
 
         missingCollections = pageRequest.size() - collections.size();
         if (missingCollections > 0) {
             for (DomainExploreCard card : exploreRepository.getCollectionsByMostRecent(input.requesterId(), new DomainPageRequest(pageRequest.page(), missingCollections, pageRequest.sortBy()))) {
-                if (addedCollectionIds.add(card.id())) collections.add(card);
+                if (hasValidMedia(card) && addedCollectionIds.add(card.id())) collections.add(card);
             }
         }
         exploreFeed.addAll(collections);
@@ -65,28 +69,56 @@ public final class FetchExploreUseCase {
         Set<UUID> addedItemIds = new HashSet<>();
 
         for (DomainExploreCard card : exploreRepository.getItemsByUserTagsAffinity(input.requesterId(), favoriteTagIds, addedCollectionIds, pageRequest)) {
-            if (addedItemIds.add(card.id())) items.add(card);
+            if (hasValidMedia(card) && addedItemIds.add(card.id())) items.add(card);
+        }
+        int missingItems = pageRequest.size() - items.size();
+        if (missingItems > 0 && !addedCollectionIds.isEmpty()) {
+            for (DomainExploreCard card : exploreRepository.getItemsByUserTagsAffinity(input.requesterId(), favoriteTagIds, Set.of(), new DomainPageRequest(pageRequest.page(), pageRequest.size(), pageRequest.sortBy()))) {
+                if (items.size() >= pageRequest.size()) break;
+                if (hasValidMedia(card) && addedItemIds.add(card.id())) items.add(card);
+            }
         }
 
         // [Grafo de recomendação] Mesma ideia acima, agora para itens.
-        int missingItems = pageRequest.size() - items.size();
+        missingItems = pageRequest.size() - items.size();
         if (missingItems > 0) {
             for (DomainExploreCard card : exploreRepository.getItemsByUserTagsAffinity(input.requesterId(), graphRecommendedTagIds, addedCollectionIds, new DomainPageRequest(pageRequest.page(), missingItems, pageRequest.sortBy()))) {
-                if (addedItemIds.add(card.id())) items.add(card);
+                if (hasValidMedia(card) && addedItemIds.add(card.id())) items.add(card);
+            }
+        }
+        missingItems = pageRequest.size() - items.size();
+        if (missingItems > 0 && !addedCollectionIds.isEmpty()) {
+            for (DomainExploreCard card : exploreRepository.getItemsByUserTagsAffinity(input.requesterId(), graphRecommendedTagIds, Set.of(), new DomainPageRequest(pageRequest.page(), pageRequest.size(), pageRequest.sortBy()))) {
+                if (items.size() >= pageRequest.size()) break;
+                if (hasValidMedia(card) && addedItemIds.add(card.id())) items.add(card);
             }
         }
 
         missingItems = pageRequest.size() - items.size();
         if (missingItems > 0) {
             for (DomainExploreCard card : exploreRepository.getItemsByPopularity(input.requesterId(), addedCollectionIds, new DomainPageRequest(pageRequest.page(), missingItems, pageRequest.sortBy()))) {
-                if (addedItemIds.add(card.id())) items.add(card);
+                if (hasValidMedia(card) && addedItemIds.add(card.id())) items.add(card);
+            }
+        }
+        missingItems = pageRequest.size() - items.size();
+        if (missingItems > 0 && !addedCollectionIds.isEmpty()) {
+            for (DomainExploreCard card : exploreRepository.getItemsByPopularity(input.requesterId(), Set.of(), new DomainPageRequest(pageRequest.page(), pageRequest.size(), pageRequest.sortBy()))) {
+                if (items.size() >= pageRequest.size()) break;
+                if (hasValidMedia(card) && addedItemIds.add(card.id())) items.add(card);
             }
         }
 
         missingItems = pageRequest.size() - items.size();
         if (missingItems > 0) {
             for (DomainExploreCard card : exploreRepository.getItemsByMostRecent(input.requesterId(), addedCollectionIds, new DomainPageRequest(pageRequest.page(), missingItems, pageRequest.sortBy()))) {
-                if (addedItemIds.add(card.id())) items.add(card);
+                if (hasValidMedia(card) && addedItemIds.add(card.id())) items.add(card);
+            }
+        }
+        missingItems = pageRequest.size() - items.size();
+        if (missingItems > 0 && !addedCollectionIds.isEmpty()) {
+            for (DomainExploreCard card : exploreRepository.getItemsByMostRecent(input.requesterId(), Set.of(), new DomainPageRequest(pageRequest.page(), pageRequest.size(), pageRequest.sortBy()))) {
+                if (items.size() >= pageRequest.size()) break;
+                if (hasValidMedia(card) && addedItemIds.add(card.id())) items.add(card);
             }
         }
         exploreFeed.addAll(items);

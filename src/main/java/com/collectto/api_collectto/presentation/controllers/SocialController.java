@@ -48,8 +48,16 @@ public final class SocialController {
             output.content().stream().map(card -> new ExploreCardsResponse.ExploreCardSummary(
                 card.id(),
                 card.context(),
+                card.name(),
+                card.description(),
                 card.imageUrls(),
-                card.tags()
+                card.tags(),
+                card.userId(),
+                card.username(),
+                card.userAvatarUrl(),
+                card.collectionId(),
+                card.collectionName(),
+                card.createdAt()
             )).toList(),
             output.size(),
             output.page(),
