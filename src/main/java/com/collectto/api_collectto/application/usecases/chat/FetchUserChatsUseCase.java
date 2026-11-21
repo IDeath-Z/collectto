@@ -13,6 +13,7 @@ import com.collectto.api_collectto.domain.entities.User;
 import com.collectto.api_collectto.domain.enums.SortBy;
 import com.collectto.api_collectto.domain.ports.ChatRepository;
 import com.collectto.api_collectto.domain.ports.MessageRepository;
+import com.collectto.api_collectto.domain.ports.PresenceReader;
 import com.collectto.api_collectto.domain.ports.UserRepository;
 import com.collectto.api_collectto.domain.shared.DomainPageRequest;
 import com.collectto.api_collectto.domain.shared.DomainSlice;
@@ -25,10 +26,12 @@ public final class FetchUserChatsUseCase {
     private final ChatRepository chatRepository;
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
+    private final PresenceReader presenceReader;
 
     public record Input(UUID requesterId, int page, int size) {}
     public record UserInfo(UUID id, String username, String avatarUrl) {}
-    public record Chats(UserInfo otherUser, String content, Instant readAt) {}
+    public record Chats(UserInfo otherUser, UUID lastSenderId, String content, Instant createdAt, Instant readAt, long unreadCount,
+                        boolean online, boolean typing) {}
     public record Output(List<Chats> chats, boolean hasNext) {}
 
     public Output execute(Input input) {
@@ -50,6 +53,8 @@ public final class FetchUserChatsUseCase {
             .findLastMessagesByOtherUserIds(input.requesterId(), otherUserIds).stream()
             .collect(Collectors.toMap(m -> m.otherParticipantFor(input.requesterId()), Function.identity()));
 
+        Map<UUID, Long> unreadByOtherUserId = messageRepository.countUnreadByOtherUserIds(input.requesterId(), otherUserIds);
+
         List<Chats> chats = otherUserIds.stream()
             .filter(usersById::containsKey)
             .map(otherUserId -> {
@@ -61,8 +66,13 @@ public final class FetchUserChatsUseCase {
 
                 return new Chats(
                     new UserInfo(user.getId(), user.getUsername(), user.getProfilePictureUrl()),
+                    lastMessage.getSenderId(),
                     lastMessage.getContent(),
-                    lastMessage.getReadAt()
+                    lastMessage.getCreatedAt(),
+                    lastMessage.getReadAt(),
+                    unreadByOtherUserId.getOrDefault(otherUserId, 0L),
+                    presenceReader.isOnline(otherUserId),
+                    presenceReader.isTyping(otherUserId, input.requesterId())
                 );
             })
             .toList();

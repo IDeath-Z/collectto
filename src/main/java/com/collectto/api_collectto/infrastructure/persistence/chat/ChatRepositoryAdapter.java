@@ -1,5 +1,6 @@
 package com.collectto.api_collectto.infrastructure.persistence.chat;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -47,5 +48,10 @@ public final class ChatRepositoryAdapter implements ChatRepository {
             .map(chatMapper::toDomain);
     
         return new DomainSlice<>(slice.getContent(), slice.hasNext());
+    }
+
+    @Override
+    public List<UUID> findPartnerIds(UUID userId) {
+        return chatJpaRepository.findPartnerIds(userId);
     }
 }

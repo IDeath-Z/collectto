@@ -6,6 +6,7 @@ import java.util.UUID;
 import com.collectto.api_collectto.domain.entities.Chat;
 import com.collectto.api_collectto.domain.entities.Message;
 import com.collectto.api_collectto.domain.entities.Chat.ChatId;
+import com.collectto.api_collectto.domain.ports.ChatEventPublisher;
 import com.collectto.api_collectto.domain.ports.ChatRepository;
 import com.collectto.api_collectto.domain.ports.MessageRepository;
 
@@ -16,6 +17,7 @@ public final class CreateMessageUseCase {
 
     private final ChatRepository chatRepository;
     private final MessageRepository messageRepository;
+    private final ChatEventPublisher chatEventPublisher;
 
     public record Input(UUID senderId, UUID receiverId, String content) {}
     public record Output(UUID id, UUID senderId, String content, Instant createdAt) {}
@@ -29,6 +31,7 @@ public final class CreateMessageUseCase {
         Message newMessage = Message.createMessage(chat, input.senderId(), input.content());
         chatRepository.save(chat.makeVisibleFrom(newMessage.getCreatedAt()));
         messageRepository.save(newMessage);
+        chatEventPublisher.messageCreated(newMessage, input.receiverId());
 
         return new Output(
             newMessage.getId(),
