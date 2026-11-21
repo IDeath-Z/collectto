@@ -62,6 +62,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/refresh").permitAll()
                 .requestMatchers(HttpMethod.POST, "/preregister").permitAll()
                 .requestMatchers(HttpMethod.GET, "/downloads/**").permitAll()
+                // WebSocket handshake: authenticated by the one-time ticket (TicketHandshakeInterceptor), not by the JWT header
+                .requestMatchers(HttpMethod.GET, "/ws").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) ->

@@ -28,7 +28,7 @@ public final class FetchUserChatsUseCase {
 
     public record Input(UUID requesterId, int page, int size) {}
     public record UserInfo(UUID id, String username, String avatarUrl) {}
-    public record Chats(UserInfo otherUser, String content, Instant readAt) {}
+    public record Chats(UserInfo otherUser, UUID lastSenderId, String content, Instant createdAt, Instant readAt, long unreadCount) {}
     public record Output(List<Chats> chats, boolean hasNext) {}
 
     public Output execute(Input input) {
@@ -50,6 +50,8 @@ public final class FetchUserChatsUseCase {
             .findLastMessagesByOtherUserIds(input.requesterId(), otherUserIds).stream()
             .collect(Collectors.toMap(m -> m.otherParticipantFor(input.requesterId()), Function.identity()));
 
+        Map<UUID, Long> unreadByOtherUserId = messageRepository.countUnreadByOtherUserIds(input.requesterId(), otherUserIds);
+
         List<Chats> chats = otherUserIds.stream()
             .filter(usersById::containsKey)
             .map(otherUserId -> {
@@ -61,8 +63,11 @@ public final class FetchUserChatsUseCase {
 
                 return new Chats(
                     new UserInfo(user.getId(), user.getUsername(), user.getProfilePictureUrl()),
+                    lastMessage.getSenderId(),
                     lastMessage.getContent(),
-                    lastMessage.getReadAt()
+                    lastMessage.getCreatedAt(),
+                    lastMessage.getReadAt(),
+                    unreadByOtherUserId.getOrDefault(otherUserId, 0L)
                 );
             })
             .toList();

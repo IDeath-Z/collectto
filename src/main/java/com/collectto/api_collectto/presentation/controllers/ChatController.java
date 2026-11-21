@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,12 +18,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.collectto.api_collectto.application.usecases.chat.ClearChatHistoryUseCase;
 import com.collectto.api_collectto.application.usecases.chat.CreateMessageUseCase;
 import com.collectto.api_collectto.application.usecases.chat.FetchChatHistoryUseCase;
+import com.collectto.api_collectto.application.usecases.chat.FetchUnreadTotalsUseCase;
 import com.collectto.api_collectto.application.usecases.chat.FetchUserChatsUseCase;
+import com.collectto.api_collectto.application.usecases.chat.MarkChatAsReadUseCase;
 import com.collectto.api_collectto.infrastructure.persistence.shared.TransactionalProxy;
 import com.collectto.api_collectto.infrastructure.security.SecurityUserDetails;
 import com.collectto.api_collectto.presentation.dto.chat.ChatHistoryResponse;
 import com.collectto.api_collectto.presentation.dto.chat.CreateMessageRequest;
 import com.collectto.api_collectto.presentation.dto.chat.CreateMessageResponse;
+import com.collectto.api_collectto.presentation.dto.chat.UnreadTotalsResponse;
 import com.collectto.api_collectto.presentation.dto.chat.UserChatsResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,6 +42,8 @@ public final class ChatController {
     private final ClearChatHistoryUseCase clearChatHistoryUseCase;
     private final FetchChatHistoryUseCase fetchChatHistoryUseCase;
     private final FetchUserChatsUseCase fetchUserChatsUseCase;
+    private final MarkChatAsReadUseCase markChatAsReadUseCase;
+    private final FetchUnreadTotalsUseCase fetchUnreadTotalsUseCase;
     private final TransactionalProxy transactionalProxy;
 
     @PostMapping("/{otherUserId}/messages")
@@ -101,8 +107,11 @@ public final class ChatController {
                         chat.otherUser().username(),
                         chat.otherUser().avatarUrl()
                     ),
+                    chat.lastSenderId(),
                     chat.content(),
-                    chat.readAt()
+                    chat.createdAt(),
+                    chat.readAt(),
+                    chat.unreadCount()
                 ))
                 .toList(),
             output.hasNext()
@@ -119,5 +128,25 @@ public final class ChatController {
         ));
 
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{otherUserId}/read")
+    @Operation(summary = "Mark chat as read", description = "Marks as read every unread message that the other user sent to the authenticated user. Idempotent.")
+    public ResponseEntity<Void> markChatAsRead(@AuthenticationPrincipal SecurityUserDetails userDetails, @PathVariable UUID otherUserId) {
+        UUID requesterId = userDetails.getUser().getId();
+        transactionalProxy.execute(() -> markChatAsReadUseCase.execute(
+            new MarkChatAsReadUseCase.Input(requesterId, otherUserId)
+        ));
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/unread")
+    @Operation(summary = "Fetch unread totals", description = "Unread chats and messages of the authenticated user, for the chat badge. The WebSocket pushes the same totals on every change.")
+    public ResponseEntity<UnreadTotalsResponse> getUnreadTotals(@AuthenticationPrincipal SecurityUserDetails userDetails) {
+        UUID requesterId = userDetails.getUser().getId();
+        var output = transactionalProxy.executeReadOnly(() -> fetchUnreadTotalsUseCase.execute(
+            new FetchUnreadTotalsUseCase.Input(requesterId)
+        ));
+        return ResponseEntity.ok(new UnreadTotalsResponse(output.unreadChats(), output.unreadMessages()));
     }
 }
