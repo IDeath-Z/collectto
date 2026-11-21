@@ -14,14 +14,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-// Server-to-client channel. Writes (send message, mark as read) stay in REST, which already validates,
-// authorizes and persists; the socket only pushes what happened. The only thing a client sends is a ping.
+// Writes that persist (send message, mark as read) stay in REST, which already validates, authorizes and saves.
+// The socket pushes what happened and receives only ephemeral signals: ping, typing.start, typing.stop.
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private final RealtimeSessionRegistry registry;
+    private final PresenceService presenceService;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -32,6 +33,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
         registry.register(userId, session);
+        presenceService.onConnected(userId);
         // Tells the client it is live; it should refetch through REST whatever it may have missed while offline.
         registry.sendToSession(userId, session.getId(), RealtimeEnvelope.json(objectMapper, "connected", null));
     }
@@ -43,8 +45,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         try {
             JsonNode node = objectMapper.readTree(message.getPayload());
-            if ("ping".equals(node.path("type").asText()))
-                registry.sendToSession(userId, session.getId(), RealtimeEnvelope.json(objectMapper, "pong", null));
+            switch (node.path("type").asText()) {
+                case "ping" -> registry.sendToSession(userId, session.getId(), RealtimeEnvelope.json(objectMapper, "pong", null));
+                case "typing.start" -> presenceService.typingStarted(userId, UUID.fromString(node.path("to").asText()));
+                case "typing.stop" -> presenceService.typingStopped(userId, UUID.fromString(node.path("to").asText()));
+                default -> { /* unknown frame: ignored */ }
+            }
         } catch (Exception e) {
             // Unknown or malformed frames are ignored on purpose.
         }
@@ -58,8 +64,10 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         UUID userId = userIdOf(session);
-        if (userId != null)
+        if (userId != null) {
             registry.unregister(userId, session.getId());
+            presenceService.onDisconnected(userId);
+        }
     }
 
     private UUID userIdOf(WebSocketSession session) {

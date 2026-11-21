@@ -18,12 +18,14 @@ import org.springframework.web.bind.annotation.RestController;
 import com.collectto.api_collectto.application.usecases.chat.ClearChatHistoryUseCase;
 import com.collectto.api_collectto.application.usecases.chat.CreateMessageUseCase;
 import com.collectto.api_collectto.application.usecases.chat.FetchChatHistoryUseCase;
+import com.collectto.api_collectto.application.usecases.chat.FetchChatStatusUseCase;
 import com.collectto.api_collectto.application.usecases.chat.FetchUnreadTotalsUseCase;
 import com.collectto.api_collectto.application.usecases.chat.FetchUserChatsUseCase;
 import com.collectto.api_collectto.application.usecases.chat.MarkChatAsReadUseCase;
 import com.collectto.api_collectto.infrastructure.persistence.shared.TransactionalProxy;
 import com.collectto.api_collectto.infrastructure.security.SecurityUserDetails;
 import com.collectto.api_collectto.presentation.dto.chat.ChatHistoryResponse;
+import com.collectto.api_collectto.presentation.dto.chat.ChatStatusResponse;
 import com.collectto.api_collectto.presentation.dto.chat.CreateMessageRequest;
 import com.collectto.api_collectto.presentation.dto.chat.CreateMessageResponse;
 import com.collectto.api_collectto.presentation.dto.chat.UnreadTotalsResponse;
@@ -44,6 +46,7 @@ public final class ChatController {
     private final FetchUserChatsUseCase fetchUserChatsUseCase;
     private final MarkChatAsReadUseCase markChatAsReadUseCase;
     private final FetchUnreadTotalsUseCase fetchUnreadTotalsUseCase;
+    private final FetchChatStatusUseCase fetchChatStatusUseCase;
     private final TransactionalProxy transactionalProxy;
 
     @PostMapping("/{otherUserId}/messages")
@@ -111,7 +114,9 @@ public final class ChatController {
                     chat.content(),
                     chat.createdAt(),
                     chat.readAt(),
-                    chat.unreadCount()
+                    chat.unreadCount(),
+                    chat.online(),
+                    chat.typing()
                 ))
                 .toList(),
             output.hasNext()
@@ -148,5 +153,15 @@ public final class ChatController {
             new FetchUnreadTotalsUseCase.Input(requesterId)
         ));
         return ResponseEntity.ok(new UnreadTotalsResponse(output.unreadChats(), output.unreadMessages()));
+    }
+
+    @GetMapping("/{otherUserId}/status")
+    @Operation(summary = "Fetch chat status", description = "Whether the other participant is online and typing to you, for when the chat screen opens. Later changes arrive through the WebSocket (presence and typing events). Always false when there is no chat between the two users.")
+    public ResponseEntity<ChatStatusResponse> getChatStatus(@AuthenticationPrincipal SecurityUserDetails userDetails, @PathVariable UUID otherUserId) {
+        UUID requesterId = userDetails.getUser().getId();
+        var output = transactionalProxy.executeReadOnly(() -> fetchChatStatusUseCase.execute(
+            new FetchChatStatusUseCase.Input(requesterId, otherUserId)
+        ));
+        return ResponseEntity.ok(new ChatStatusResponse(output.online(), output.typing()));
     }
 }

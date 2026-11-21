@@ -31,13 +31,15 @@ public class ChatRealtimeListener {
     record UnreadUpdatedPayload(UnreadPayload unread) {}
 
     private final RealtimeSessionRegistry registry;
+    private final PresenceService presenceService;
     private final MessageRepository messageRepository;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate readOnlyNewTransaction;
 
-    public ChatRealtimeListener(RealtimeSessionRegistry registry, MessageRepository messageRepository,
+    public ChatRealtimeListener(RealtimeSessionRegistry registry, PresenceService presenceService, MessageRepository messageRepository,
             ObjectMapper objectMapper, PlatformTransactionManager transactionManager) {
         this.registry = registry;
+        this.presenceService = presenceService;
         this.messageRepository = messageRepository;
         this.objectMapper = objectMapper;
         // The original transaction is already committed; unread totals are read in a fresh one.
@@ -48,6 +50,8 @@ public class ChatRealtimeListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onMessageCreated(ChatRealtimeEvents.MessageCreated event) {
+        // The message is out: "typing" ends for the recipient before the message itself arrives.
+        presenceService.messageSent(event.senderId(), event.recipientId());
         MessagePayload message = new MessagePayload(event.messageId(), event.senderId(), event.content(), event.createdAt());
         // Recipient: new message plus fresh badge totals.
         push(event.recipientId(), "message.created", () ->

@@ -6,12 +6,14 @@ import org.springframework.context.annotation.Configuration;
 import com.collectto.api_collectto.application.usecases.chat.ClearChatHistoryUseCase;
 import com.collectto.api_collectto.application.usecases.chat.CreateMessageUseCase;
 import com.collectto.api_collectto.application.usecases.chat.FetchChatHistoryUseCase;
+import com.collectto.api_collectto.application.usecases.chat.FetchChatStatusUseCase;
 import com.collectto.api_collectto.application.usecases.chat.FetchUnreadTotalsUseCase;
 import com.collectto.api_collectto.application.usecases.chat.FetchUserChatsUseCase;
 import com.collectto.api_collectto.application.usecases.chat.MarkChatAsReadUseCase;
 import com.collectto.api_collectto.domain.ports.ChatEventPublisher;
 import com.collectto.api_collectto.domain.ports.ChatRepository;
 import com.collectto.api_collectto.domain.ports.MessageRepository;
+import com.collectto.api_collectto.domain.ports.PresenceReader;
 import com.collectto.api_collectto.domain.ports.UserRepository;
 
 @Configuration
@@ -33,8 +35,13 @@ public class ChatConfig {
     }
 
     @Bean
-    public FetchUserChatsUseCase fetchUserChatsUseCase(ChatRepository chatRepository, MessageRepository messageRepository, UserRepository userRepository) {
-        return new FetchUserChatsUseCase(chatRepository, messageRepository, userRepository);
+    public FetchUserChatsUseCase fetchUserChatsUseCase(ChatRepository chatRepository, MessageRepository messageRepository, UserRepository userRepository, PresenceReader presenceReader) {
+        return new FetchUserChatsUseCase(chatRepository, messageRepository, userRepository, presenceReader);
+    }
+
+    @Bean
+    public FetchChatStatusUseCase fetchChatStatusUseCase(ChatRepository chatRepository, PresenceReader presenceReader) {
+        return new FetchChatStatusUseCase(chatRepository, presenceReader);
     }
 
     @Bean

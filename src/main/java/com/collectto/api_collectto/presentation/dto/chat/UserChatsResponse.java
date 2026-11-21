@@ -31,7 +31,13 @@ public record UserChatsResponse(
             Instant readAt,
 
             @Schema(description = "Messages from the other participant not yet read by the authenticated user", example = "3")
-            long unreadCount
+            long unreadCount,
+
+            @Schema(description = "The other participant is online", example = "true")
+            boolean online,
+
+            @Schema(description = "The other participant is typing a message to you", example = "false")
+            boolean typing
     ) {}
 
     public record OtherUserResponse(

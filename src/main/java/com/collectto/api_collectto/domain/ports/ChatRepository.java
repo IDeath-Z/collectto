@@ -1,5 +1,6 @@
 package com.collectto.api_collectto.domain.ports;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -13,4 +14,7 @@ public interface ChatRepository {
     DomainSlice<Chat> findAllVisibleByUserId(UUID userId, DomainPageRequest pageRequest);
     Chat save(Chat chat);
     boolean existsById(UUID lowerUserId, UUID higherUserId);
+
+    // Everyone the user has a chat with (cleared or not). Used to scope presence.
+    List<UUID> findPartnerIds(UUID userId);
 }
